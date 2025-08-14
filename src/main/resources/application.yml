@@ -6,11 +6,11 @@ spring:
     name: ebanking-transactions-service
   kafka:
     bootstrap-servers: localhost:9092
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          issuer-uri: http://localhost:9999/realms/example
+  # security:
+  #   oauth2:
+  #     resourceserver:
+  #       jwt:
+  #         issuer-uri: http://localhost:9999/realms/example
 
 management:
   endpoints:
@@ -25,3 +25,8 @@ logging:
   level:
     root: INFO
     org.springframework.security: INFO
+
+app:
+  security:
+    dev-jwt-secret: dev-secret-please-change-32bytes-minimum!!!!
+
