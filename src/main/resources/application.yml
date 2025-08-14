@@ -34,3 +34,7 @@ app:
   kafka:
     topic: transactions
     consumer-group: ebanking-transactions-service
+  rates: # Sample DEV exchange rates
+    CHF: 1.05   # CHF -> EUR
+    GBP: 1.16   # GBP -> EUR
+    EUR: 1.00   # EUR -> EUR

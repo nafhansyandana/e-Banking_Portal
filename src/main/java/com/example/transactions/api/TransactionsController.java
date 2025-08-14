@@ -3,6 +3,7 @@ package com.example.transactions.api;
 import com.example.transactions.model.*;
 import com.example.transactions.store.TransactionStore;
 import com.example.transactions.stream.TransactionMapper;
+import com.example.transactions.rates.ExchangeRateService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -20,9 +21,11 @@ import java.time.YearMonth;
 @RequestMapping("/transactions")
 public class TransactionsController {
     private final TransactionStore store;
+    private final ExchangeRateService rates;
 
-    public TransactionsController(TransactionStore store) {
+    public TransactionsController(TransactionStore store, ExchangeRateService rates) {
         this.store = store;
+        this.rates = rates;
     }
 
     @GetMapping
@@ -64,14 +67,14 @@ public class TransactionsController {
 
             // Calculate debit/credit per page
             var debit = items.stream()
-                    .map(i -> i.amount().amount())
-                    .filter(a -> a.signum() < 0)
+                    .filter(i -> i.amount().amount().signum() < 0)
+                    .map(i -> rates.convert(i.amount(), baseCurrency).amount())
                     .map(BigDecimal::abs)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
 
             var credit = items.stream()
-                    .map(i -> i.amount().amount())
-                    .filter(a -> a.signum() > 0)
+                    .filter(i -> i.amount().amount().signum() > 0)
+                    .map(i -> rates.convert(i.amount(), baseCurrency).amount())
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
 
             var pageRespKafka = new PageResponse<>(
@@ -115,11 +118,13 @@ public class TransactionsController {
                 false
         );
 
-        // Summary dummy
+        // Summary dummy (convert to baseCurrency)
+        var debitConv  = rates.convert(new MoneyDto("EUR", new BigDecimal("20.00")), baseCurrency).amount();
+        var creditConv = rates.convert(new MoneyDto("EUR", new BigDecimal("75.00")), baseCurrency).amount();
         var summary = new TransactionsPageSummaryDto(
                 baseCurrency,
-                new MoneyDto(baseCurrency, new BigDecimal("20.00")), // debit total
-                new MoneyDto(baseCurrency, new BigDecimal("75.00"))  // credit total
+                new MoneyDto(baseCurrency, debitConv),
+                new MoneyDto(baseCurrency, creditConv)
         );
 
         return ResponseEntity.ok(new TransactionsResponse(pageResp, summary));
