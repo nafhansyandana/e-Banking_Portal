@@ -6,6 +6,8 @@ spring:
     name: ebanking-transactions-service
   kafka:
     bootstrap-servers: localhost:9092
+    listener:
+      missing-topics-fatal: false
   # security:
   #   oauth2:
   #     resourceserver:
@@ -29,4 +31,6 @@ logging:
 app:
   security:
     dev-jwt-secret: dev-secret-please-change-32bytes-minimum!!!!
-
+  kafka:
+    topic: transactions
+    consumer-group: ebanking-transactions-service

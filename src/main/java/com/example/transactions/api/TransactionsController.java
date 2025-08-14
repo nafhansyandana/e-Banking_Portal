@@ -1,6 +1,8 @@
 package com.example.transactions.api;
 
 import com.example.transactions.model.*;
+import com.example.transactions.store.TransactionStore;
+import com.example.transactions.stream.TransactionMapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -12,10 +14,16 @@ import org.springframework.security.oauth2.jwt.Jwt;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.time.YearMonth;
 
 @RestController
 @RequestMapping("/transactions")
 public class TransactionsController {
+    private final TransactionStore store;
+
+    public TransactionsController(TransactionStore store) {
+        this.store = store;
+    }
 
     @GetMapping
     @Operation(
@@ -45,6 +53,43 @@ public class TransactionsController {
             @RequestParam(required = false) String accountIban,
             @AuthenticationPrincipal Jwt jwt
     ) {
+
+        // Additionally, if there is Kafka data stored for the user and month, use it
+        String currentUserId = (jwt != null) ? jwt.getSubject() : "anonymous";
+        YearMonth ym = YearMonth.parse(month);
+
+        if (store.hasData(currentUserId, ym)) {
+            var events = store.page(currentUserId, ym, accountIban, page, size);
+            var items = events.stream().map(TransactionMapper::toDto).toList();
+
+            // Calculate debit/credit per page
+            var debit = items.stream()
+                    .map(i -> i.amount().amount())
+                    .filter(a -> a.signum() < 0)
+                    .map(BigDecimal::abs)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            var credit = items.stream()
+                    .map(i -> i.amount().amount())
+                    .filter(a -> a.signum() > 0)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            var pageRespKafka = new PageResponse<>(
+                    items,
+                    page,
+                    size,
+                    store.hasNext(currentUserId, ym, accountIban, page, size)
+            );
+
+            var summaryKafka = new TransactionsPageSummaryDto(
+                    baseCurrency,
+                    new MoneyDto(baseCurrency, debit),
+                    new MoneyDto(baseCurrency, credit)
+            );
+
+            return ResponseEntity.ok(new TransactionsResponse(pageRespKafka, summaryKafka));
+        }
+
         // ==== DUMMY DATA (temp) ====
         String userId = (jwt != null) ? jwt.getSubject() : "anonymous";
         System.out.println("DEBUG userId=" + userId);
