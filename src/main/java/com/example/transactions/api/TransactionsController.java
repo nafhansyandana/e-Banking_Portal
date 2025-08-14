@@ -7,6 +7,8 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -40,9 +42,12 @@ public class TransactionsController {
             @Parameter(description = "Target currency for conversion", example = "EUR")
             @RequestParam(defaultValue = "EUR") String baseCurrency,
             @Parameter(description = "Filter by IBAN (optional)", example = "CH93-0000-0000-0000-0000-0")
-            @RequestParam(required = false) String accountIban
+            @RequestParam(required = false) String accountIban,
+            @AuthenticationPrincipal Jwt jwt
     ) {
         // ==== DUMMY DATA (temp) ====
+        String userId = (jwt != null) ? jwt.getSubject() : "anonymous";
+        System.out.println("DEBUG userId=" + userId);
         var t1 = new TransactionDto(
                 "89d3o179-abcd-465b-o9ee-e2d5f6ofEld46",
                 new MoneyDto("CHF", new BigDecimal("75.00")),
