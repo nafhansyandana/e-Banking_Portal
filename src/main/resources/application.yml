@@ -1,0 +1,40 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: ebanking-transactions-service
+  kafka:
+    bootstrap-servers: localhost:9092
+    listener:
+      missing-topics-fatal: false
+  # security:
+  #   oauth2:
+  #     resourceserver:
+  #       jwt:
+  #         issuer-uri: http://localhost:9999/realms/example
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when_authorized
+
+logging:
+  level:
+    root: INFO
+    org.springframework.security: INFO
+
+app:
+  security:
+    dev-jwt-secret: dev-secret-please-change-32bytes-minimum!!!!
+  kafka:
+    topic: transactions
+    consumer-group: ebanking-transactions-service
+  rates: # Sample DEV exchange rates
+    CHF: 1.05   # CHF -> EUR
+    GBP: 1.16   # GBP -> EUR
+    EUR: 1.00   # EUR -> EUR
