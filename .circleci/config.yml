@@ -1,46 +1,48 @@
 version: 2.1
-# Use machine executor so Docker can run smoothly
+
 jobs:
   build-and-test:
     machine:
-      image: ubuntu-2204:2024.01
+      image: ubuntu-2204:current
+    resource_class: medium
     environment:
       MAVEN_OPTS: -Xmx1024m
     steps:
       - checkout
+
+      # Install JDK 21 (Temurin)
+      - run:
+          name: Install Temurin JDK 21
+          command: |
+            sudo apt-get update
+            sudo apt-get install -y wget gpg apt-transport-https
+            wget -O - https://packages.adoptium.net/artifactory/api/gpg/key/public | sudo gpg --dearmor -o /usr/share/keyrings/adoptium.gpg
+            echo "deb [signed-by=/usr/share/keyrings/adoptium.gpg] https://packages.adoptium.net/artifactory/deb jammy main" | sudo tee /etc/apt/sources.list.d/adoptium.list
+            sudo apt-get update
+            sudo apt-get install -y temurin-21-jdk
+            java -version
+
       # Cache Maven
       - restore_cache:
           keys:
             - maven-{{ checksum "pom.xml" }}
             - maven-
       - run:
-          name: Show Java & Maven
-          command: |
-            java -version || true
-            mvn -v || true
-      - run:
           name: Build & Test (unit + integration)
           command: |
-            mvn -B -e -DskipITs=false -Dtest=\!KafkaFlowIT verify
-            # Catatan: KafkaFlowIT juga akan ikut jalan karena Testcontainers; 
-            # flag -Dtest=!KafkaFlowIT hanya contoh jika mau exclude
-
+            ./mvnw -B -e -DskipITs=false verify
+            # (opsional) exclude IT tertentu: ./mvnw -B -e -Dtest=\!KafkaFlowIT verify
       - save_cache:
           key: maven-{{ checksum "pom.xml" }}
           paths:
             - ~/.m2/repository
 
+      # Build Docker image
       - run:
           name: Build Docker image
           command: |
             docker --version
             docker build -t ebanking-transactions-service:ci .
-      # - run:
-      #     name: Push to Docker Hub (opsional)
-      #     command: |
-      #       echo "$DOCKERHUB_PASS" | docker login -u "$DOCKERHUB_USER" --password-stdin
-      #       docker tag ebanking-transactions-service:ci $DOCKERHUB_USER/ebanking-transactions-service:latest
-      #       docker push $DOCKERHUB_USER/ebanking-transactions-service:latest
 
 workflows:
   build_and_test:
