@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ebanking-transactions-config
+data:
+  spring.kafka.bootstrap-servers: "kafka:9092"
+  # Dev exchange rates (EUR per 1 unit CCY)
+  app.rates.eurBased.EUR: "1.00"
+  app.rates.eurBased.CHF: "1.05"
+  app.rates.eurBased.GBP: "0.85"

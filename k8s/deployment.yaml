@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ebanking-transactions
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ebanking-transactions
+  template:
+    metadata:
+      labels:
+        app: ebanking-transactions
+    spec:
+      containers:
+        - name: app
+          image: ebanking-transactions-service:local
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          env:
+            # Map secret
+            - name: app.security.dev-jwt-secret
+              valueFrom:
+                secretKeyRef:
+                  name: ebanking-transactions-secret
+                  key: app.security.dev-jwt-secret
+            # Map config
+            - name: spring.kafka.bootstrap-servers
+              valueFrom:
+                configMapKeyRef:
+                  name: ebanking-transactions-config
+                  key: spring.kafka.bootstrap-servers
+            - name: app.rates.eurBased.EUR
+              valueFrom:
+                configMapKeyRef:
+                  name: ebanking-transactions-config
+                  key: app.rates.eurBased.EUR
+            - name: app.rates.eurBased.CHF
+              valueFrom:
+                configMapKeyRef:
+                  name: ebanking-transactions-config
+                  key: app.rates.eurBased.CHF
+            - name: app.rates.eurBased.GBP
+              valueFrom:
+                configMapKeyRef:
+                  name: ebanking-transactions-config
+                  key: app.rates.eurBased.GBP
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 20
