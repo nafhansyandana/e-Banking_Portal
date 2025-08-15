@@ -1,0 +1,48 @@
+version: 2.1
+# Use machine executor so Docker can run smoothly
+jobs:
+  build-and-test:
+    machine:
+      image: ubuntu-2204:2024.01
+    environment:
+      MAVEN_OPTS: -Xmx1024m
+    steps:
+      - checkout
+      # Cache Maven
+      - restore_cache:
+          keys:
+            - maven-{{ checksum "pom.xml" }}
+            - maven-
+      - run:
+          name: Show Java & Maven
+          command: |
+            java -version || true
+            mvn -v || true
+      - run:
+          name: Build & Test (unit + integration)
+          command: |
+            mvn -B -e -DskipITs=false -Dtest=\!KafkaFlowIT verify
+            # Catatan: KafkaFlowIT juga akan ikut jalan karena Testcontainers; 
+            # flag -Dtest=!KafkaFlowIT hanya contoh jika mau exclude
+
+      - save_cache:
+          key: maven-{{ checksum "pom.xml" }}
+          paths:
+            - ~/.m2/repository
+
+      - run:
+          name: Build Docker image
+          command: |
+            docker --version
+            docker build -t ebanking-transactions-service:ci .
+      # - run:
+      #     name: Push to Docker Hub (opsional)
+      #     command: |
+      #       echo "$DOCKERHUB_PASS" | docker login -u "$DOCKERHUB_USER" --password-stdin
+      #       docker tag ebanking-transactions-service:ci $DOCKERHUB_USER/ebanking-transactions-service:latest
+      #       docker push $DOCKERHUB_USER/ebanking-transactions-service:latest
+
+workflows:
+  build_and_test:
+    jobs:
+      - build-and-test
